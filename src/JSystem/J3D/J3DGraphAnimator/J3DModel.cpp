@@ -662,8 +662,123 @@ void J3DModel::setSkinDeform(J3DSkinDeform* pSkinDeform,
 	}
 }
 
+static f32 J3DUnit01[2] = { 0.0f, 1.0f };
+
+#define qr0 0
+
 #pragma dont_inline on
-void J3DModel::calcWeightEnvelopeMtx() { }
+void J3DModel::calcWeightEnvelopeMtx()
+{
+	register s32 i;
+	register s32 offset;
+	register f32* unit01;
+	unit01 = J3DUnit01;
+	i      = -1;
+	offset = -0x30;
+
+#ifdef __MWERKS__ // clang-format off
+	asm {
+		lwz r5, 0x4(r3)
+		lwz r6, 0x8c(r5)
+		lwz r8, 0x90(r5)
+		lhz r11, 0x84(r5)
+		subi r5, r6, 0x2
+		subi r6, r8, 0x4
+		psq_l f27, 0x0(unit01), 0, qr0
+		ps_merge00 f10, f27, f27
+		ps_merge00 f12, f27, f27
+		ps_merge00 f31, f27, f27
+		b cond
+	body:
+		lwz r8, 0x54(r3)
+		li r0, 0x1
+		add r28, r8, i
+		stb r0, 0x0(r28)
+		lwz r0, 0x5c(r3)
+		add r31, r0, offset
+		ps_merge00 f9, f27, f27
+		ps_merge00 f11, f27, f27
+		ps_merge00 f13, f27, f27
+		lwz r8, 0x4(r3)
+		clrlwi r0, i, 16
+		lwz r8, 0x88(r8)
+		li r29, 0x0
+		lbzx r12, r8, r0
+	inner:
+		lhzu r30, 0x2(r5)
+		lwz r8, 0x4(r3)
+		clrlwi r0, r30, 16
+		mulli unit01, r0, 0x30
+		lwz r10, 0x94(r8)
+		lwz r8, 0x58(r3)
+		mulli r0, r30, 0x30
+		add unit01, r10, unit01
+		add r8, r8, r0
+		psq_l f0, 0x0(unit01), 0, qr0
+		psq_l f1, 0x0(r8), 0, qr0
+		psq_l f3, 0x10(r8), 0, qr0
+		psq_l f5, 0x20(r8), 0, qr0
+		ps_muls0 f8, f0, f1
+		psq_l f6, 0x10(unit01), 0, qr0
+		ps_muls0 f30, f0, f3
+		ps_muls0 f29, f0, f5
+		psq_l f7, 0x20(unit01), 0, qr0
+		ps_madds1 f8, f6, f1, f8
+		psq_l f2, 0x8(r8), 0, qr0
+		ps_madds1 f30, f6, f3, f30
+		psq_l f4, 0x18(r8), 0, qr0
+		ps_madds1 f29, f6, f5, f29
+		psq_l f6, 0x28(r8), 0, qr0
+		ps_madds0 f8, f7, f2, f8
+		lfsu f0, 0x4(r6)
+		ps_madds0 f30, f7, f4, f30
+		ps_madds0 f29, f7, f6, f29
+		psq_l f7, 0x8(unit01), 0, qr0
+		ps_madds0 f9, f8, f0, f9
+		ps_madds0 f11, f30, f0, f11
+		ps_madds0 f13, f29, f0, f13
+		psq_l f8, 0x18(unit01), 0, qr0
+		ps_muls0 f30, f7, f1
+		ps_muls0 f29, f7, f3
+		ps_muls0 f28, f7, f5
+		psq_l f7, 0x28(unit01), 0, qr0
+		psq_st f9, 0x0(r31), 0, qr0
+		ps_madds1 f30, f8, f1, f30
+		ps_madds1 f29, f8, f3, f29
+		ps_madds1 f28, f8, f5, f28
+		ps_madds0 f30, f7, f2, f30
+		ps_madds0 f29, f7, f4, f29
+		ps_madds0 f28, f7, f6, f28
+		psq_st f11, 0x10(r31), 0, qr0
+		psq_st f13, 0x20(r31), 0, qr0
+		ps_madd f30, f27, f2, f30
+		ps_madd f29, f27, f4, f29
+		ps_madd f28, f27, f6, f28
+		ps_madds0 f10, f30, f0, f10
+		ps_madds0 f12, f29, f0, f12
+		ps_madds0 f31, f28, f0, f31
+		lwz r8, 0x50(r3)
+		addi r29, r29, 0x1
+		lbz unit01, 0x0(r28)
+		lbzx r0, r8, r30
+		cmpw r29, r12
+		and r0, unit01, r0
+		stb r0, 0x0(r28)
+		blt inner
+		psq_st f10, 0x8(r31), 0, qr0
+		ps_merge00 f10, f27, f27
+		psq_st f12, 0x18(r31), 0, qr0
+		ps_merge00 f12, f27, f27
+		psq_st f31, 0x28(r31), 0, qr0
+		ps_merge00 f31, f27, f27
+	cond:
+		addi i, i, 0x1
+		cmpw i, r11
+		addi offset, offset, 0x30
+		blt body
+	}
+#endif // clang-format on
+}
 #pragma dont_inline off
 
 void J3DModel::update()
