@@ -10,9 +10,9 @@ bool CPolarSubCamera::controlByCameraCode_(int* param_1)
 	bool result = true;
 	*param_1    = -1;
 	if (SMS_IsMarioOpeningDoor()) {
-		if (mMode == 0x42 && gpCameraMario->unk18 == 0x78) {
-			changeCamModeSpecifyFrame_(0x14, 1);
-			warpPosAndAt(unk80.unk28, *gpMarioAngleY + 0x9C4);
+		if (mMode == CAMERA_MODE_DELFINO_B && gpCameraMario->unk18 == 0x78) {
+			changeCamModeSpecifyFrame_(CAMERA_MODE_DELFINO, 1);
+			warpPosAndAt(mCurrentTarget.unk28, *gpMarioAngleY + 0x9C4);
 		}
 		unk120->onNeutralMarioKey();
 		result = false;

@@ -32,19 +32,19 @@ void CPolarSubCamera::calcTowerCenterPos_(Vec* result)
 
 	const char* name;
 	switch (mMode) {
-	case 0x27:
+	case CAMERA_MODE_TOWER_A:
 		name = sPositionNameTable[0];
 		break;
-	case 0x28:
+	case CAMERA_MODE_TOWER_B:
 		name = sPositionNameTable[1];
 		break;
-	case 0x29:
+	case CAMERA_MODE_TOWER_C:
 		name = sPositionNameTable[2];
 		break;
-	case 0x37:
+	case CAMERA_MODE_TOWER_D:
 		name = sPositionNameTable[3];
 		break;
-	case 0x41:
+	case CAMERA_MODE_TOWER_E:
 		name = sPositionNameTable[4];
 		break;
 	default:
@@ -73,11 +73,11 @@ void CPolarSubCamera::ctrlNormalOrTowerCamera_()
 	unk250 = 0.0f;
 
 	if (unk7C == 0)
-		unk80.unkC.set(gpCameraMario->unk0);
+		mCurrentTarget.mTarget.set(gpCameraMario->unk0);
 
 	if (unk78 == 0) {
 		if (unk64 & 0x4) {
-			if (!CLBChaseAngleDecrease(&unk80.unk26, unk274, unk276)) {
+			if (!CLBChaseAngleDecrease(&mCurrentTarget.mYaw, unk274, unk276)) {
 				unk64 &= ~0x4;
 				if (unk64 & 0x8) {
 					unk64 &= ~0x8;
@@ -99,46 +99,47 @@ void CPolarSubCamera::ctrlNormalOrTowerCamera_()
 		} else if (fVar2 != 0.0f) {
 			rotateY_ByStickX_(fVar2);
 			execInvalidAutoChase_();
-		} else if (mMode == 0x39) {
+		} else if (mMode == CAMERA_MODE_BOSS_GESO) {
 			if (isChangeToBossGesoCamera_())
 				calcNoticeTargetYrot_(unk2A8->mPosition);
-		} else if (mMode == 0x43) {
+		} else if (mMode == CAMERA_MODE_CANCAN) {
 			if (isChangeToCancanCamera_())
 				calcNoticeTargetYrot_(
 				    ((TFireWanwanTailHit*)gpMarioOriginal->getHeldObject())
 				        ->getHostPos());
 		} else {
 			if (!SMS_IsMarioTouchGround4cm()) {
-				unk250 = CLBLinearInbetween(unk68->mJumpFollowSpeedXmin,
-				                            unk68->mJumpFollowSpeedXmax,
-				                            unk80.unk28);
+				unk250 = CLBLinearInbetween(
+				    mCurrentParams->mJumpFollowSpeedXmin,
+				    mCurrentParams->mJumpFollowSpeedXmax, mCurrentTarget.unk28);
 			} else {
-				unk250
-				    = CLBLinearInbetween(unk68->mFollowSpeedXmin,
-				                         unk68->mFollowSpeedXmax, unk80.unk28);
+				unk250 = CLBLinearInbetween(mCurrentParams->mFollowSpeedXmin,
+				                            mCurrentParams->mFollowSpeedXmax,
+				                            mCurrentTarget.unk28);
 			}
 
 			if (isMomentDefinite_()) {
-				unk80.unk26 = matan(unkB4.unk0.z - unk80.unkC.z,
-				                    unkB4.unk0.x - unk80.unkC.x);
+				mCurrentTarget.mYaw = matan(
+				    mPreviousTarget.mPosition.z - mCurrentTarget.mTarget.z,
+				    mPreviousTarget.mPosition.x - mCurrentTarget.mTarget.x);
 			} else if (!(unk64 & 0x80) && !isMarioCrabWalk_()) {
 				if (isMarioAimWithGun_() && !isChangeToParallelCameraByMoveBG_()
 				    && !isChangeToParallelCameraCByMoveBG_()) {
 					if (unk288 != 0.0f) {
-						f32 fVar15
-						    = CLBEaseInInbetween(0.0f, 1.0f, unk80.unk28);
-						s16 uVar9 = CLBEaseInInbetween(
-						    unk2D4->mSLAimAngleYChaseMin.get(),
-						    unk2D4->mSLAimAngleYChaseMax.get(), fVar15);
-						CLBChaseAngleDecrease(&unk80.unk26,
+						f32 fVar15 = CLBEaseInInbetween(0.0f, 1.0f,
+						                                mCurrentTarget.unk28);
+						s16 uVar9  = CLBEaseInInbetween(
+                            mSaveEx->mSLAimAngleYChaseMin.get(),
+                            mSaveEx->mSLAimAngleYChaseMax.get(), fVar15);
+						CLBChaseAngleDecrease(&mCurrentTarget.mYaw,
 						                      *gpMarioAngleY - 0x8000, uVar9);
 					}
 				} else {
 					f32 fVar2;
 					s16 sVar9 = *gpMarioAngleY - 0x8000;
 					switch (mMode) {
-					case 0x2B:
-					case 0x12:
+					case CAMERA_MODE_DIVING:
+					case CAMERA_MODE_HOVERING:
 						fVar2 = DEG2SHORTANGLE(sVar9 - unk258 < 0
 						                           ? -(sVar9 - unk258)
 						                           : sVar9 - unk258);
@@ -152,25 +153,28 @@ void CPolarSubCamera::ctrlNormalOrTowerCamera_()
 
 					f32 dVar13 = 1.0f;
 					if (unk2CA != -1) {
-						dVar13 = CLBLinearInbetween(unk68->mInHouseMaginfXmin,
-						                            unk68->mInHouseMaginfXmax,
-						                            unk80.unk28);
+						dVar13 = CLBLinearInbetween(
+						    mCurrentParams->mInHouseMaginfXmin,
+						    mCurrentParams->mInHouseMaginfXmax,
+						    mCurrentTarget.unk28);
 					} else if (SMS_CheckMarioFlag(MARIO_FLAG_OCCLUDED)) {
-						dVar13 = CLBLinearInbetween(unk68->mObstructMaginfXmin,
-						                            unk68->mObstructMaginfXmax,
-						                            unk80.unk28);
+						dVar13 = CLBLinearInbetween(
+						    mCurrentParams->mObstructMaginfXmin,
+						    mCurrentParams->mObstructMaginfXmax,
+						    mCurrentTarget.unk28);
 					}
 
 					int uVar1 = unk120->mCompSPos[2];
 					if (uVar1 & 0xff) {
-						dVar13 *= CLBLinearInbetween(unk68->mLFollowMaginfXmin,
-						                             unk68->mLFollowMaginfXmax,
-						                             unk80.unk28);
+						dVar13 *= CLBLinearInbetween(
+						    mCurrentParams->mLFollowMaginfXmin,
+						    mCurrentParams->mLFollowMaginfXmax,
+						    mCurrentTarget.unk28);
 					}
 					f32 fVar4;
 					switch (mMode) {
-					case 0x2B:
-					case 0x12:
+					case CAMERA_MODE_DIVING:
+					case CAMERA_MODE_HOVERING:
 						fVar4 = 100.0f;
 						break;
 					default:
@@ -180,8 +184,8 @@ void CPolarSubCamera::ctrlNormalOrTowerCamera_()
 					f32 kek = unk288 * fVar4 * dVar13 * unk250 * fVar2;
 					if (kek > 32766.998f)
 						kek = 32766.998f;
-					CLBChaseGeneralConstantSpecifySpeed(&unk80.unk26, sVar9,
-					                                    CLBRoundf<s16>(kek));
+					CLBChaseGeneralConstantSpecifySpeed(
+					    &mCurrentTarget.mYaw, sVar9, CLBRoundf<s16>(kek));
 				}
 			}
 		}

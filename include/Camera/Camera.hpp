@@ -3,14 +3,18 @@
 
 #include <JSystem/JDrama/JDRActor.hpp>
 #include <JSystem/JDrama/JDRCamera.hpp>
-#include <dolphin/mtx.h>
+#include <Player/MarioAccess.hpp>
+#include <Camera/CameraMarioData.hpp>
+#include <Camera/CameraKindParam.hpp>
+#include <Camera/CameraInbetween.hpp>
+#include <Camera/CameraMode.hpp>
+#include <Camera/cameralib.hpp>
 
 class TBaseNPC;
 class TCameraMapTool;
 class TMarioGamePad;
 class TCameraInbetween;
 class TCameraKindParam;
-class TBossGesso;
 class TCameraBck;
 class TCamSaveKindParam;
 class TCameraJetCoaster;
@@ -23,23 +27,23 @@ class TTargetCamera {
 public:
 	TTargetCamera& operator=(const TTargetCamera& other)
 	{
-		unk0  = other.unk0;
-		unkC  = other.unkC;
-		unk18 = other.unk18;
-		unk24 = other.unk24;
-		unk26 = other.unk26;
-		unk28 = other.unk28;
-		unk2C = other.unk2C;
-		unk30 = other.unk30;
+		mPosition = other.mPosition;
+		mTarget   = other.mTarget;
+		unk18     = other.unk18;
+		mPitch    = other.mPitch;
+		mYaw      = other.mYaw;
+		unk28     = other.unk28;
+		unk2C     = other.unk2C;
+		unk30     = other.unk30;
 
 		return *this;
 	}
 
-	/* 0x0 */ JGeometry::TVec3<f32> unk0;
-	/* 0xC */ JGeometry::TVec3<f32> unkC;
+	/* 0x0 */ JGeometry::TVec3<f32> mPosition;
+	/* 0xC */ JGeometry::TVec3<f32> mTarget;
 	/* 0x18 */ JGeometry::TVec3<f32> unk18;
-	/* 0x24 */ s16 unk24;
-	/* 0x26 */ s16 unk26;
+	/* 0x24 */ s16 mPitch;
+	/* 0x26 */ s16 mYaw;
 	/* 0x28 */ f32 unk28;
 	/* 0x2C */ s16 unk2C;
 	/* 0x30 */ f32 unk30;
@@ -47,7 +51,10 @@ public:
 
 class CPolarSubCamera : public JDrama::TLookAtCamera {
 public:
-	enum EnumNoticeOnOffMode { };
+	enum EnumNoticeOnOffMode {
+		NOTICE_MODE_UNK0 = 0,
+		NOTICE_MODE_UNK2 = 2,
+	};
 
 	CPolarSubCamera(const char* = "<CPolarCamera>");
 
@@ -118,7 +125,7 @@ public:
 			result = true;
 		return result;
 	}
-	bool isThing4(int mode) const
+	bool isFixOrDefiniteCameraSpecifyMode(int mode) const
 	{
 		return isFixCameraSpecifyMode(mode)
 		       || isDefiniteCameraSpecifyMode(mode);
@@ -126,7 +133,32 @@ public:
 	MtxPtr getUnk16C() { return unk16C; }
 	MtxPtr getUnk1AC() { return unk1AC; }
 
+	// Fabricated name but real inline
+	bool fabricatedInline3()
+	{
+		bool result = true;
+		if (mMode == CAMERA_MODE_UNDER_GROUND
+		    || (mPrevMode == CAMERA_MODE_UNDER_GROUND
+		        && (isNowInbetween() || mMode == CAMERA_MODE_JUMP_CODE)))
+			result = false;
+
+		return result;
+	}
+
 private:
+	// fabricated
+	void fabricatedInline2()
+	{
+		CLBCrossToPolar(mTarget, mPosition, &unk256, &unk258);
+
+		unk25C.set(unk148.x - unk124.x, unk148.y - unk124.y,
+		           unk148.z - unk124.z);
+		unk25C.normalize();
+		unk270 = MsClamp(CLBCalcRatio(mCurrentParams->mXAngleMin,
+		                              mCurrentParams->mXAngleMax, unk256),
+		                 0.0f, 1.0f);
+	}
+
 	void calcSecureViewTarget_(s16, f32*, f32*);
 	void execSecureView_(s16, Vec*);
 
@@ -142,7 +174,7 @@ private:
 
 	s16 calcAngleXFromXRotRatio_() const;
 	f32 calcDistFromXRotRatio_() const;
-	void calcNowTargetFromPosAndAt_(const Vec&, const Vec&);
+	void calcNowTargetFromPosAndAt_(const Vec& pos, const Vec& at);
 	void rotateX_ByStickY_(f32);
 	void rotateY_ByStickX_(f32);
 	void offMoveApproach_();
@@ -175,15 +207,58 @@ private:
 	void getNozzleTopPos_(JGeometry::TVec3<f32>*) const;
 	void ctrlLButtonCamera_();
 	void killHeightPanWhenChangeCamMode_();
-	void isNotHeightPanCamMode_() const;
 	void execHeightPan_();
 	void killHeightPan_();
+
+	bool isNotHeightPanCamMode_() const
+	{
+		(void)0;
+		(void)0;
+		(void)0;
+		(void)0;
+		(void)0;
+		(void)0;
+		(void)0;
+		bool bVar1 = false;
+		if (isLButtonCameraSpecifyMode(mMode)
+		    || isRailCameraSpecifyMode(mMode)) {
+			bVar1 = true;
+		} else {
+			switch (mMode) {
+			case CAMERA_MODE_MARE_UNDER_GROUND:
+			case CAMERA_MODE_UNDER_GROUND:
+			case CAMERA_MODE_HANG:
+			case CAMERA_MODE_HOVERING:
+			case CAMERA_MODE_JUMP_CODE:
+			case CAMERA_MODE_DIVING:
+			case CAMERA_MODE_SWIMMING:
+			case CAMERA_MODE_LOOK_DOWN:
+			case CAMERA_MODE_MONTE_HANG:
+			case CAMERA_MODE_TOWER_E:
+				bVar1 = true;
+			}
+		}
+		return bVar1;
+	}
+	bool fabricatedInline()
+	{
+		bool result = false;
+		if (!isNotHeightPanCamMode_() && !SMS_IsMarioTouchGround4cm()
+		    && !gpCameraMario->isMarioGoDown() && !SMS_IsMarioOnWire()
+		    && SMS_GetMarioStatus() != MARIO_STATUS_KICK_ROOF_ROLL_UP)
+			result = true;
+		return result;
+	}
 
 	bool controlByCameraCode_(int*);
 	void getLButtonCameraModeByNozzle_();
 	s16 getCameraInbetweenFrame_(int);
 	void setUpToLButtonCamera_(int);
 	void setUpFromLButtonCamera_();
+	void changeCamMode_(int mode)
+	{
+		changeCamModeSpecifyFrame_(mode, getCameraInbetweenFrame_(mode));
+	}
 	void changeCamModeSub_(int, int, bool);
 	void changeCamModeSpecifyFrame_(int, int);
 	void changeCamModeSpecifyCamMapTool_(const TCameraMapTool*);
@@ -207,27 +282,69 @@ private:
 
 public:
 	/* 0x50 */ int mMode;
-	/* 0x54 */ int unk54;
-	/* 0x58 */ u32 unk58;
-	/* 0x5C */ u32 unk5C;
-	/* 0x60 */ u32 unk60;
+	/* 0x54 */ int mPrevMode;
+	/* 0x58 */ int mSavedModeBeforeTalk;
+	/* 0x5C */ int mInitialMode;
+
+	struct CameraUnk60Struct {
+
+		CameraUnk60Struct(int count)
+		    : unk0(count)
+		    , unk4(0)
+		    , unk8(nullptr)
+		{
+			unk8 = new int[unk0];
+		}
+
+		int getThing() const
+		{
+			if (unk4 <= 0)
+				return (int)unk8; // what
+
+			return unk8[unk4 - 1];
+		}
+
+		void popThing()
+		{
+			if (unk4 > 0)
+				--unk4;
+		}
+
+		void doStuff(const int& param_1)
+		{
+			if (unk4 >= unk0) {
+				for (int i = 0; i < unk0 - 1; ++i)
+					unk8[i] = unk8[i + 1];
+				unk8[unk0 - 1] = param_1;
+			} else {
+				unk8[unk4] = param_1;
+				++unk4;
+			}
+		}
+
+		/* 0x0 */ int unk0;
+		/* 0x4 */ int unk4;
+		/* 0x8 */ int* unk8;
+	};
+
+	/* 0x60 */ CameraUnk60Struct* unk60;
 	/* 0x64 */ u16 unk64;
-	/* 0x68 */ TCameraKindParam* unk68;
-	/* 0x6C */ TCameraInbetween* unk6C;
-	/* 0x70 */ TCameraMapTool* unk70;
-	/* 0x74 */ u32 unk74;
+	/* 0x68 */ TCameraKindParam* mCurrentParams;
+	/* 0x6C */ TCameraInbetween* mInbetween;
+	/* 0x70 */ const TCameraMapTool* unk70;
+	/* 0x74 */ const TCameraMapTool* unk74;
 	/* 0x78 */ u32 unk78;
 	/* 0x7C */ u32 unk7C;
-	/* 0x80 */ TTargetCamera unk80;
-	/* 0xB4 */ TTargetCamera unkB4;
-	/* 0xE8 */ TTargetCamera unkE8;
+	/* 0x80 */ TTargetCamera mCurrentTarget;
+	/* 0xB4 */ TTargetCamera mPreviousTarget;
+	/* 0xE8 */ TTargetCamera mTargetBeforeFixedMode;
 	/* 0x11C */ u32 unk11C;
 	/* 0x120 */ TMarioGamePad* unk120;
 	/* 0x124 */ JGeometry::TVec3<f32> unk124;
-	/* 0x130 */ Vec unk130;
+	/* 0x130 */ JGeometry::TVec3<f32> unk130;
 	/* 0x13C */ JGeometry::TVec3<f32> unk13C;
 	/* 0x148 */ JGeometry::TVec3<f32> unk148;
-	/* 0x154 */ Vec unk154;
+	/* 0x154 */ JGeometry::TVec3<f32> unk154;
 	/* 0x160 */ JGeometry::TVec3<f32> unk160;
 	/* 0x16C */ Mtx44 unk16C;
 	/* 0x1AC */ Mtx44 unk1AC;
@@ -238,7 +355,7 @@ public:
 	/* 0x254 */ s16 unk254;
 	/* 0x256 */ s16 unk256;
 	/* 0x258 */ s16 unk258;
-	/* 0x25C */ Vec unk25C;
+	/* 0x25C */ JGeometry::TVec3<f32> unk25C;
 	/* 0x268 */ f32 unk268;
 	/* 0x26C */ f32 unk26C;
 	/* 0x270 */ f32 unk270;
@@ -249,7 +366,7 @@ public:
 	/* 0x27C */ u16 unk27C;
 	/* 0x27E */ u16 unk27E;
 	/* 0x280 */ u16 unk280;
-	/* 0x282 */ s16 unk282;
+	/* 0x282 */ u16 unk282;
 	/* 0x284 */ s32 unk284;
 	/* 0x288 */ f32 unk288;
 	/* 0x28C */ s16 unk28C;
@@ -263,6 +380,16 @@ public:
 	/* 0x2A8 */ TLiveActor* unk2A8;
 
 	struct CameraUnk2ACStruct {
+		CameraUnk2ACStruct() { reset(); }
+
+		void reset()
+		{
+			unk0 = 0;
+			unk4 = 0.0f;
+			unk8 = 0.0f;
+			unkC = 0.0f;
+		}
+
 		/* 0x0 */ s16 unk0;
 		/* 0x4 */ f32 unk4;
 		/* 0x8 */ f32 unk8;
@@ -273,6 +400,15 @@ public:
 	/* 0x2B0 */ TCameraBck* unk2B0;
 
 	struct CameraUnk2B4Struct {
+		CameraUnk2B4Struct()
+		    : unk0(nullptr)
+		    , unk4(0.0f)
+		    , unk8(nullptr)
+		    , unkC(0)
+		    , unk10(0)
+		    , unk14(0)
+		{
+		}
 
 		void setThing(int value)
 		{
@@ -296,9 +432,9 @@ public:
 	/* 0x2C8 */ s16 unk2C8;
 	/* 0x2CA */ s16 unk2CA;
 	/* 0x2CC */ u8 unk2CC;
-	/* 0x2D0 */ TCamSaveNotice* unk2D0;
-	/* 0x2D4 */ TCamSaveEx* unk2D4;
-	/* 0x2D8 */ TCamSaveKindParam* unk2D8[73];
+	/* 0x2D0 */ TCamSaveNotice* mSaveNotice;
+	/* 0x2D4 */ TCamSaveEx* mSaveEx;
+	/* 0x2D8 */ TCamSaveKindParam* mSaveKindParam[73];
 
 	static const char* mCamKindNameSaveFile[73];
 };

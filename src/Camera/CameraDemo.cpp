@@ -31,7 +31,7 @@ void CPolarSubCamera::endSimpleDemoCamera_() { }
 void CPolarSubCamera::updateDemoCamera_(bool param_1)
 {
 	if (param_1) {
-		if ((mMode == 0x49) ? true : false) {
+		if ((mMode == CAMERA_MODE_COUNT) ? true : false) {
 			unk2B0->updateDemo(&unk124, &unk148, &mUp, &mFovy);
 
 			if (unk2B4->unk4 != 0.0f) {
@@ -84,7 +84,7 @@ void CPolarSubCamera::updateDemoCamera_(bool param_1)
 		if (unk2B4->unk14 == 0) {
 			unk120->onNeutralMarioKey();
 			unk2B4->setThing(0);
-			if (mMode == 0x49 ? true : false)
+			if (mMode == CAMERA_MODE_COUNT ? true : false)
 				return;
 			unk2B4->unkC |= 1;
 		}
@@ -96,9 +96,9 @@ void CPolarSubCamera::updateGateDemoCamera_()
 	f32 fovy;
 	unk2B0->updateDemo(nullptr, nullptr, nullptr, &fovy);
 
-	int v = unk6C->unk4;
+	int v = mInbetween->unk4;
 	if (unk70 != unk2B4->unk8 && v > 0)
-		CLBChaseConstantSpecifyFrame<f32>(&mFovy, fovy, (f32)unk6C->unk4);
+		CLBChaseConstantSpecifyFrame<f32>(&mFovy, fovy, (f32)mInbetween->unk4);
 	else
 		mFovy = fovy;
 
@@ -146,15 +146,15 @@ void CPolarSubCamera::startDemoCamera(const char* name,
 	if (unk2B0->isFileExist(name)) {
 		unk2B0->startDemo(name, offset);
 		unk2B4->setThing(unk2B0->getTotalDemoFrames());
-		changeCamModeSpecifyFrame_(0x49, 1);
-		mNear   = unk2D4->mSLReproduceDemoNearClip.get();
+		changeCamModeSpecifyFrame_(CAMERA_MODE_COUNT, 1);
+		mNear   = mSaveEx->mSLReproduceDemoNearClip.get();
 		started = true;
 	}
 
 	if (started)
 		return;
 
-	if ((mMode == 0x49) ? true : false)
+	if ((mMode == CAMERA_MODE_COUNT) ? true : false)
 		return;
 
 	TCameraMapTool* tool = (TCameraMapTool*)gpCamMapToolTable->searchF(
@@ -175,8 +175,8 @@ void CPolarSubCamera::startDemoCamera(const char* name,
 
 void CPolarSubCamera::endDemoCamera()
 {
-	if ((mMode == 0x49) ? true : false) {
-		if (mMode == 0x49) {
+	if ((mMode == CAMERA_MODE_COUNT) ? true : false) {
+		if (mMode == CAMERA_MODE_COUNT) {
 			unk2B0->endDemo();
 			unk2B4->setThing(0);
 			changeCamModeSpecifyFrame_(-1, 1);
@@ -197,7 +197,7 @@ void CPolarSubCamera::endDemoCamera()
 bool CPolarSubCamera::isSimpleDemoCamera() const
 {
 	bool result = false;
-	if (((mMode == 0x49) ? true : false) == false) {
+	if (((mMode == CAMERA_MODE_COUNT) ? true : false) == false) {
 		if (unk2B4->unk14 > 0 || (unk2B4->unkC & 1U))
 			result = true;
 	}
@@ -210,10 +210,11 @@ int CPolarSubCamera::getRestDemoFrames() const { return unk2B4->unk14; }
 
 void CPolarSubCamera::ctrlNormalDeadDemo_()
 {
-	unk80.unkC.set(gpCameraMario->unk0);
-	unk6C->execCameraInbetween(mPosition, unk80.unkC, SMS_GetMarioPos());
+	mCurrentTarget.mTarget.set(gpCameraMario->unk0);
+	mInbetween->execCameraInbetween(mPosition, mCurrentTarget.mTarget,
+	                                SMS_GetMarioPos());
 
-	CLBChaseDecrease(&mTarget, unk6C->unk24, 0.03f, 0.0f);
+	CLBChaseDecrease(&mTarget, mInbetween->unk24, 0.03f, 0.0f);
 
 	if (gpMarioOriginal->checkFlag(MARIO_FLAG_HELMET_FLW_CAMERA))
 		return;
